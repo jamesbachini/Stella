@@ -190,7 +190,6 @@ h2 {
   gap: 10px;
   min-height: 46px;
   border-color: #111111;
-  font-weight: 800;
 }
 
 .new-chat span {
@@ -201,7 +200,6 @@ h2 {
   border-radius: 50%;
   background: var(--yellow);
   color: #111111;
-  font-weight: 900;
   line-height: 1;
 }
 
@@ -255,7 +253,6 @@ h2 {
   background: var(--surface-warm);
   box-shadow: inset 4px 0 0 var(--yellow);
   color: var(--ink);
-  font-weight: 700;
 }
 
 .chat-panel {
@@ -364,7 +361,6 @@ h2 {
   padding: 16px;
   background: #ffffff;
   color: #202020;
-  font-weight: 800;
   text-align: left;
 }
 
@@ -453,11 +449,11 @@ h2 {
   max-width: min(690px, 100%);
   margin-left: auto;
   padding: 13px 16px;
-  border: 1px solid #111111;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #111111;
-  color: #ffffff;
-  box-shadow: 6px 6px 0 rgba(255, 210, 31, 0.85);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 6px 6px 0 var(--yellow-fade);
 }
 
 .sources {
@@ -474,24 +470,23 @@ h2 {
   flex: 0 0 auto;
   align-items: center;
   gap: 8px;
-  max-width: 340px;
+  max-width: 440px;
   padding: 8px 11px;
   overflow: hidden;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: #ffffff;
   color: #303030;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 10px;
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sources a span {
-  color: var(--yellow-strong);
+  color: var(--yellow-fade);
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1;
   text-transform: uppercase;
 }
@@ -530,7 +525,6 @@ h2 {
   background: var(--surface-warm);
   color: #262626;
   font-size: 12px;
-  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -573,7 +567,6 @@ h2 {
   overflow: hidden;
   color: #333333;
   font-size: 13px;
-  font-weight: 800;
 }
 
 .file-button span {
@@ -604,7 +597,6 @@ h2 {
   border-color: #111111;
   background: var(--yellow);
   box-shadow: 4px 4px 0 #111111;
-  font-weight: 900;
 }
 
 .composer button:hover:not(:disabled) {

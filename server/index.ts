@@ -11,8 +11,8 @@ import {
 } from "./context.js";
 import { extractFiles } from "./files.js";
 import { retrieveStellarDocs } from "./mintlify.js";
-import { streamOpenRouter } from "./openrouter.js";
-import type { ChatMessage } from "./types.js";
+import { addUrlFetchToolContext, streamOpenRouter } from "./openrouter.js";
+import type { ChatMessage, DocsSource } from "./types.js";
 
 const app = express();
 const upload = multer({
@@ -25,6 +25,17 @@ const upload = multer({
 
 function writeEvent(res: express.Response, event: unknown): void {
   res.write(`${JSON.stringify(event)}\n`);
+}
+
+function uniqueSources(sources: DocsSource[]): DocsSource[] {
+  const seen = new Set<string>();
+  return sources.filter((source) => {
+    if (seen.has(source.url)) {
+      return false;
+    }
+    seen.add(source.url);
+    return true;
+  });
 }
 
 app.get("/api/health", (_req, res) => {
@@ -59,14 +70,16 @@ app.post("/api/chat", upload.array("files", config.maxFiles), async (req, res) =
       ...history,
       { role: "user", content: userContent }
     ];
+    const withFetchedUrls = await addUrlFetchToolContext(messages);
+    const sources = uniqueSources([...docs.sources, ...withFetchedUrls.sources]);
 
-    writeEvent(res, { type: "sources", sources: docs.sources });
+    writeEvent(res, { type: "sources", sources });
 
-    await streamOpenRouter(messages, (text) => {
+    await streamOpenRouter(withFetchedUrls.messages, (text) => {
       writeEvent(res, { type: "delta", text });
     });
 
-    writeEvent(res, { type: "done", sources: docs.sources });
+    writeEvent(res, { type: "done", sources });
     res.end();
   } catch (error) {
     const messageText = error instanceof Error ? error.message : "Unknown error";

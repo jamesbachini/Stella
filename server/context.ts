@@ -36,7 +36,7 @@ export function sanitizeHistory(messages: unknown): ChatMessage[] {
     .slice(-20)
     .map((message) => ({
       role: message.role,
-      content: message.content.slice(0, 24_000)
+      content: message.content?.slice(0, 24_000) ?? ""
     }));
 }
 
@@ -67,6 +67,7 @@ export function buildSystemPrompt(
   return [
     customContext.trim(),
     docsSection,
+    "You can request current public web page content with the fetch_url tool when the user asks for latest versions, releases, prices, status, or other facts that may have changed. Use fetched URL content for current claims and cite fetched URLs.",
     "When using retrieved docs, cite source URLs in the answer. If the docs do not support a Stellar-specific claim, say so clearly."
   ]
     .filter(Boolean)
