@@ -51,8 +51,17 @@ export function loadConversations(): Conversation[] {
 }
 
 export function saveConversations(conversations: Conversation[]): void {
+  if (conversations.length === 0) {
+    localStorage.removeItem("stellar-ai-conversations");
+    return;
+  }
+
   localStorage.setItem(
     "stellar-ai-conversations",
     JSON.stringify(conversations.slice(0, 40))
   );
+}
+
+export function clearStoredData(): void {
+  localStorage.clear();
 }

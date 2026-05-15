@@ -1,14 +1,19 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Conversation,
   Message,
   Source,
+  clearStoredData,
   createId,
   loadConversations,
   saveConversations,
   summarizeTitle
 } from "./chat";
 import stellarLogo from "../stellar_logo.svg";
+import stellaAvatar from "../stella.svg";
+import userAvatar from "../user.svg";
 
 type StreamEvent =
   | { type: "sources"; sources: Source[] }
@@ -35,15 +40,46 @@ function parseEvents(buffer: string): { events: StreamEvent[]; rest: string } {
   return { events, rest };
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MarkdownMessage({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ children, ...props }) => (
+          <a {...props} target="_blank" rel="noreferrer">
+            {children}
+          </a>
+        )
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
+function MessageBubble({ message, isThinking = false }: { message: Message; isThinking?: boolean }) {
+  const avatar = message.role === "user" ? userAvatar : stellaAvatar;
+  const shouldRenderMarkdown = message.role === "assistant" && !isThinking;
+
   return (
     <div className={`message message-${message.role}`}>
       <div className="message-avatar" aria-hidden="true">
-        {message.role === "user" ? "Y" : "S"}
+        <img src={avatar} alt="" />
       </div>
       <div className="message-body">
         <div className="message-role">{message.role === "user" ? "You" : "Stellar AI"}</div>
-        <div className="message-content">{message.content}</div>
+        <div
+          className={`message-content ${isThinking ? "message-thinking" : ""}`}
+          aria-live={isThinking ? "polite" : undefined}
+        >
+          {isThinking ? (
+            "thinking..."
+          ) : shouldRenderMarkdown ? (
+            <MarkdownMessage content={message.content} />
+          ) : (
+            message.content
+          )}
+        </div>
       </div>
     </div>
   );
@@ -93,6 +129,15 @@ export function App() {
     setActiveId(conversation.id);
     setSources([]);
     upsertConversation(conversation);
+  }
+
+  function deleteData() {
+    clearStoredData();
+    setConversations([]);
+    setActiveId(createId());
+    setDraft("");
+    setFiles([]);
+    setSources([]);
   }
 
   async function sendMessage(event?: FormEvent) {
@@ -260,6 +305,11 @@ export function App() {
             ))}
           </nav>
         </div>
+        <div className="sidebar-footer">
+          <button className="delete-data" onClick={deleteData} type="button">
+            Delete Data
+          </button>
+        </div>
       </aside>
 
       <main className={`chat-panel ${hasMessages ? "has-chat" : "empty-chat"}`}>
@@ -281,13 +331,21 @@ export function App() {
               <h3>Your AI Assistant For Stellar</h3>
               <p className="version">Stella v2.0.1</p>
               <p>
-                Search current Stellar Developer Docs, attach implementation notes,
-                and get focused answers for your build.
+                Get answers and information from Stella, The agentic AI chatbot integrated with Stellar documentation and resources
               </p>
             </div>
           ) : (
-            activeConversation.messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+            activeConversation.messages.map((message, index) => (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isThinking={
+                  isSending &&
+                  message.role === "assistant" &&
+                  message.content.length === 0 &&
+                  index === activeConversation.messages.length - 1
+                }
+              />
             ))
           )}
         </div>

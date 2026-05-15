@@ -32,15 +32,9 @@ Vitest is the test framework. Place tests in `tests/` and name files `*.test.ts`
 
 Focus tests on behavior that can regress: prompt assembly, message sanitization, file handling, streaming parsing, and local conversation helpers. Run `npm test` before submitting changes. Add or update tests when changing backend request assembly, MCP retrieval, file extraction, or chat state logic.
 
-## Commit & Pull Request Guidelines
-No Git history is available in this workspace, so use clear, conventional commit messages such as `feat: add source citations` or `fix: handle pdf extraction errors`.
+Do not start a dev server after changes
 
-Pull requests should include:
-
-- A short summary of user-visible changes.
-- Test/build results, especially `npm test` and `npm run build`.
-- Screenshots or screen recordings for UI changes.
-- Notes for configuration changes, new environment variables, or security-sensitive behavior.
+Do not commit code using git
 
 ## Security & Configuration Tips
 Do not commit `.env` or real OpenRouter keys. Keep custom behavior in `context/system.md` unless it must be enforced in code. Validate file uploads server-side and preserve the existing size/type limits when extending attachment support.

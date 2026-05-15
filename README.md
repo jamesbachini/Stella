@@ -68,12 +68,10 @@ Start the frontend and backend together:
 npm run dev
 ```
 
-This runs:
-
-- Vite on `http://localhost:5173`
-- Express with `tsx watch server/index.ts`
-
-The current dev script sets `PORT=3029` inline, so the API server listens on `http://localhost:3029` during development unless you edit the script. In production, the server uses `PORT` from `.env` or falls back to `3028`.
+This runs Express with `tsx watch server/index.ts` on `http://localhost:3028`.
+In development, Express mounts Vite as middleware, so the frontend and `/api`
+routes share the same port. In production, the server uses `PORT` from `.env`
+or falls back to `3028`.
 
 ## Available Scripts
 
@@ -84,7 +82,7 @@ npm start
 npm test
 ```
 
-- `npm run dev` starts Vite and the TypeScript server watcher.
+- `npm run dev` starts the TypeScript server watcher with Vite middleware.
 - `npm run build` compiles the server and builds the client into `dist/`.
 - `npm start` runs the built server from `dist/server`.
 - `npm test` runs the Vitest test suite.

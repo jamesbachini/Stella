@@ -1,5 +1,6 @@
 import express from "express";
 import multer from "multer";
+import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
@@ -15,6 +16,7 @@ import { addUrlFetchToolContext, streamOpenRouter } from "./openrouter.js";
 import type { ChatMessage, DocsSource } from "./types.js";
 
 const app = express();
+const isDevelopment = process.env.NODE_ENV === "development";
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -88,12 +90,35 @@ app.post("/api/chat", upload.array("files", config.maxFiles), async (req, res) =
   }
 });
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const clientDist = resolve(__dirname, "../client");
-app.use(express.static(clientDist));
-app.use((_req, res) => {
-  res.sendFile(resolve(clientDist, "index.html"));
-});
+if (isDevelopment) {
+  const { createServer } = await import("vite");
+  const vite = await createServer({
+    root: "client",
+    server: {
+      middlewareMode: true
+    },
+    appType: "custom"
+  });
+  app.use(vite.middlewares);
+  app.use(async (req, res, next) => {
+    try {
+      const indexPath = resolve(process.cwd(), "client/index.html");
+      const template = await readFile(indexPath, "utf-8");
+      const html = await vite.transformIndexHtml(req.originalUrl, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    } catch (error) {
+      vite.ssrFixStacktrace(error as Error);
+      next(error);
+    }
+  });
+} else {
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const clientDist = resolve(__dirname, "../client");
+  app.use(express.static(clientDist));
+  app.use((_req, res) => {
+    res.sendFile(resolve(clientDist, "index.html"));
+  });
+}
 
 app.listen(config.port, () => {
   console.log(`Stellar AI chatbot listening on http://localhost:${config.port}`);

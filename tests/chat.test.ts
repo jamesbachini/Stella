@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.stubGlobal("crypto", { randomUUID: () => "id" });
 vi.stubGlobal("localStorage", {
   getItem: () => null,
-  setItem: () => undefined
+  setItem: () => undefined,
+  removeItem: () => undefined,
+  clear: () => undefined
 });
 
 describe("chat helpers", async () => {
