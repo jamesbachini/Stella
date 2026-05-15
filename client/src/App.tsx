@@ -21,6 +21,8 @@ type StreamEvent =
   | { type: "done"; sources: Source[] }
   | { type: "error"; error: string };
 
+type ChatModel = "mintlify-ai" | "stella-v2";
+
 function emptyConversation(): Conversation {
   return {
     id: createId(),
@@ -94,6 +96,7 @@ export function App() {
   const [files, setFiles] = useState<File[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ChatModel>("mintlify-ai");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const activeConversation = useMemo(() => {
@@ -105,6 +108,7 @@ export function App() {
     );
   }, [activeId, conversations]);
   const hasMessages = activeConversation.messages.length > 0;
+  const modelLabel = selectedModel === "mintlify-ai" ? "Mintlify AI" : "Stella v2";
 
   useEffect(() => {
     saveConversations(conversations);
@@ -168,6 +172,7 @@ export function App() {
     try {
       const formData = new FormData();
       formData.set("message", content);
+      formData.set("model", selectedModel);
       formData.set(
         "messages",
         JSON.stringify(
@@ -278,6 +283,17 @@ export function App() {
             <span className="eyebrow">Docs intelligence</span>
             <strong>Build on Stellar</strong>
             <p>Grounded answers from developer docs, github repos and custom context.</p>
+            <label className="model-picker">
+              <span>Choose your model</span>
+              <select
+                value={selectedModel}
+                onChange={(event) => setSelectedModel(event.target.value as ChatModel)}
+                disabled={isSending}
+              >
+                <option value="mintlify-ai">Mintlify AI</option>
+                <option value="stella-v2">Stella v2</option>
+              </select>
+            </label>
           </div>
         </div>
         <div className="sidebar-actions">
@@ -320,7 +336,7 @@ export function App() {
           </div>
           <div className={`status-pill ${isSending ? "busy" : ""}`}>
             <span aria-hidden="true" />
-            {isSending ? "Retrieving docs" : "Ready"}
+            {isSending ? "Responding" : modelLabel}
           </div>
         </div>
 
