@@ -23,6 +23,20 @@ type StreamEvent =
 
 type ChatModel = "mintlify-ai" | "stella-v2";
 
+const thinkingSteps = [
+  "Thinking",
+  "Planning task",
+  "Checking docs",
+  "Gathering context",
+  "Reading sources",
+  "Asking Tomer",
+  "Noodling",
+  "Drafting response",
+  "Checking accuracy",
+  "Validating result",
+];
+const apiKey = import.meta.env.VITE_STELLA_API_KEY ?? "";
+
 function emptyConversation(): Conversation {
   return {
     id: createId(),
@@ -59,6 +73,31 @@ function MarkdownMessage({ content }: { content: string }) {
   );
 }
 
+function ThinkingIndicator() {
+  const [stepIndex, setStepIndex] = useState(0);
+  const activeStep = thinkingSteps[stepIndex];
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setStepIndex((current) => (current + 1) % thinkingSteps.length);
+    }, 2200);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  return (
+    <div className="thinking-indicator" role="status" aria-label={`${activeStep}...`}>
+      <span className="thinking-spinner" aria-hidden="true" />
+      <span className="thinking-label">{activeStep}</span>
+      <span className="thinking-dots" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </span>
+    </div>
+  );
+}
+
 function MessageBubble({ message, isThinking = false }: { message: Message; isThinking?: boolean }) {
   const avatar = message.role === "user" ? userAvatar : stellaAvatar;
   const shouldRenderMarkdown = message.role === "assistant" && !isThinking;
@@ -75,7 +114,7 @@ function MessageBubble({ message, isThinking = false }: { message: Message; isTh
           aria-live={isThinking ? "polite" : undefined}
         >
           {isThinking ? (
-            "thinking..."
+            <ThinkingIndicator />
           ) : shouldRenderMarkdown ? (
             <MarkdownMessage content={message.content} />
           ) : (
@@ -188,8 +227,20 @@ export function App() {
 
       const response = await fetch("/api/chat", {
         method: "POST",
+        headers: apiKey ? { "X-Stella-API-Key": apiKey } : undefined,
         body: formData
       });
+
+      if (!response.ok) {
+        let errorText = `Request failed with status ${response.status}`;
+        try {
+          const errorBody = (await response.json()) as { error?: string };
+          errorText = errorBody.error ?? errorText;
+        } catch {
+          // Keep the status-based error when the response is not JSON.
+        }
+        throw new Error(errorText);
+      }
 
       if (!response.body) {
         throw new Error("The server did not return a stream.");
@@ -345,7 +396,7 @@ export function App() {
             <div className="empty-state">
               <h2>Ask Stella</h2>
               <h3>Your AI Assistant For Stellar</h3>
-              <p className="version">Stella v2.0.1</p>
+              <p className="version">Stella v2.0.2</p>
               <p>
                 Get answers and information from Stella, The agentic AI chatbot integrated with Stellar documentation and resources
               </p>

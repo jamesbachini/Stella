@@ -11,9 +11,10 @@ import {
   sanitizeHistory
 } from "./context.js";
 import { extractFiles } from "./files.js";
-import { retrieveStellarDocs } from "./mintlify.js";
+import { retrieveStellarDocs } from "./docsSearch.js";
 import { streamMintlifyAssistant } from "./mintlifyAssistant.js";
 import { addUrlFetchToolContext, streamOpenRouter } from "./openrouter.js";
+import { createApiKeyMiddleware, createGlobalRateLimitMiddleware } from "./security.js";
 import type { ChatMessage, DocsSource } from "./types.js";
 
 const app = express();
@@ -45,64 +46,76 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/chat", upload.array("files", config.maxFiles), async (req, res) => {
-  res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("X-Accel-Buffering", "no");
+const requireApiKey = createApiKeyMiddleware(config.allowedApiKeys);
+const enforceGlobalRateLimit = createGlobalRateLimitMiddleware({
+  maxRequests: config.rateLimitMaxRequests,
+  windowMs: config.rateLimitWindowMs
+});
 
-  try {
-    const message = String(req.body.message ?? "").trim();
-    if (!message) {
-      res.status(400);
-      writeEvent(res, { type: "error", error: "Message is required" });
-      res.end();
-      return;
-    }
+app.post(
+  "/api/chat",
+  requireApiKey,
+  enforceGlobalRateLimit,
+  upload.array("files", config.maxFiles),
+  async (req, res) => {
+    res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("X-Accel-Buffering", "no");
 
-    const parsedMessages = req.body.messages
-      ? JSON.parse(String(req.body.messages))
-      : [];
-    const history = sanitizeHistory(parsedMessages);
-    const files = await extractFiles(req.files as Express.Multer.File[]);
-    const userContent = buildUserContent(message, files);
-    const model = String(req.body.model ?? "mintlify-ai");
+    try {
+      const message = String(req.body.message ?? "").trim();
+      if (!message) {
+        res.status(400);
+        writeEvent(res, { type: "error", error: "Message is required" });
+        res.end();
+        return;
+      }
 
-    if (model === "stella-v2") {
-      const docs = await retrieveStellarDocs(message);
-      const customContext = await loadCustomContext();
+      const parsedMessages = req.body.messages
+        ? JSON.parse(String(req.body.messages))
+        : [];
+      const history = sanitizeHistory(parsedMessages);
+      const files = await extractFiles(req.files as Express.Multer.File[]);
+      const userContent = buildUserContent(message, files);
+      const model = String(req.body.model ?? "mintlify-ai");
 
-      const messages: ChatMessage[] = [
-        { role: "system", content: buildSystemPrompt(customContext, docs) },
-        ...history,
-        { role: "user", content: userContent }
-      ];
-      const withFetchedUrls = await addUrlFetchToolContext(messages);
-      const sources = uniqueSources([...docs.sources, ...withFetchedUrls.sources]);
+      if (model === "stella-v2") {
+        const docs = await retrieveStellarDocs(message);
+        const customContext = await loadCustomContext();
 
-      writeEvent(res, { type: "sources", sources });
+        const messages: ChatMessage[] = [
+          { role: "system", content: buildSystemPrompt(customContext, docs) },
+          ...history,
+          { role: "user", content: userContent }
+        ];
+        const withFetchedUrls = await addUrlFetchToolContext(messages);
+        const sources = uniqueSources([...docs.sources, ...withFetchedUrls.sources]);
 
-      await streamOpenRouter(withFetchedUrls.messages, (text) => {
+        writeEvent(res, { type: "sources", sources });
+
+        await streamOpenRouter(withFetchedUrls.messages, (text) => {
+          writeEvent(res, { type: "delta", text });
+        });
+
+        writeEvent(res, { type: "done", sources });
+        res.end();
+        return;
+      }
+
+      const messages: ChatMessage[] = [...history, { role: "user", content: userContent }];
+      await streamMintlifyAssistant(messages, (text) => {
         writeEvent(res, { type: "delta", text });
       });
 
-      writeEvent(res, { type: "done", sources });
+      writeEvent(res, { type: "done", sources: [] });
       res.end();
-      return;
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : "Unknown error";
+      writeEvent(res, { type: "error", error: messageText });
+      res.end();
     }
-
-    const messages: ChatMessage[] = [...history, { role: "user", content: userContent }];
-    await streamMintlifyAssistant(messages, (text) => {
-      writeEvent(res, { type: "delta", text });
-    });
-
-    writeEvent(res, { type: "done", sources: [] });
-    res.end();
-  } catch (error) {
-    const messageText = error instanceof Error ? error.message : "Unknown error";
-    writeEvent(res, { type: "error", error: messageText });
-    res.end();
   }
-});
+);
 
 if (isDevelopment) {
   const { createServer } = await import("vite");

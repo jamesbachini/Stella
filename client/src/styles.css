@@ -495,8 +495,86 @@ h2 {
 }
 
 .message-thinking {
-  color: #575757;
-  font-style: italic;
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  padding-top: 2px;
+  color: #454545;
+}
+
+.thinking-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 28px;
+  font-weight: 700;
+}
+
+.thinking-spinner {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(17, 17, 17, 0.16);
+  border-top-color: var(--yellow-strong);
+  border-right-color: #111111;
+  border-radius: 50%;
+  animation: thinking-spin 860ms linear infinite;
+}
+
+.thinking-label {
+  min-width: 132px;
+}
+
+.thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 28px;
+}
+
+.thinking-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #111111;
+  animation: thinking-dot 1.15s ease-in-out infinite;
+}
+
+.thinking-dots span:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.thinking-dots span:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+@keyframes thinking-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes thinking-dot {
+  0%,
+  70%,
+  100% {
+    opacity: 0.28;
+    transform: translateY(0);
+  }
+
+  35% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-spinner,
+  .thinking-dots span {
+    animation-duration: 2.4s;
+  }
 }
 
 .message-user .message-content {

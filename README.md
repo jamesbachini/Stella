@@ -1,11 +1,12 @@
 # Stella
 
-Stella is a Stellar-focused AI chat assistant with a React/Vite frontend and an Express backend. It streams responses from OpenRouter, retrieves relevant Stellar Developer Docs through the Mintlify MCP endpoint, and can include uploaded text or PDF files as extra context for each chat turn.
+Stella is a Stellar-focused AI chat assistant with a React/Vite frontend and an Express backend. It streams responses from OpenRouter, retrieves relevant Stellar Developer Docs from a local docs checkout, and can include uploaded text or PDF files as extra context for each chat turn.
 
 ## Features
 
 - Streaming chat responses over newline-delimited JSON.
-- Stellar Developer Docs retrieval through Mintlify MCP.
+- Local Stellar Developer Docs retrieval for Stella v2.
+- Mintlify assistant API mode for the Mintlify AI option.
 - Editable system/context prompt in `context/system.md`.
 - Local browser conversation history.
 - File attachments for text-like files and PDFs.
@@ -17,7 +18,7 @@ Stella is a Stellar-focused AI chat assistant with a React/Vite frontend and an 
 - React 19 and Vite for the client.
 - Express 5 and TypeScript for the server.
 - OpenRouter chat completions for model responses.
-- Model Context Protocol SDK for Stellar docs retrieval.
+- Local hybrid search over Markdown/MDX Stellar docs.
 - Multer and `pdf-parse` for attachment handling.
 - Vitest for tests.
 
@@ -46,6 +47,8 @@ Then set at least:
 
 ```bash
 OPENROUTER_API_KEY=your_openrouter_key
+STELLA_API_KEYS=["stella-local-dev-key"]
+VITE_STELLA_API_KEY=stella-local-dev-key
 ```
 
 The default `.env.example` values are:
@@ -53,9 +56,17 @@ The default `.env.example` values are:
 | Variable | Purpose | Default |
 | --- | --- | --- |
 | `OPENROUTER_API_KEY` | Required for real chat responses. | empty |
+| `STELLA_API_KEYS` | JSON array or comma-separated list of app access keys accepted by `/api/chat`. | `["stella-local-dev-key"]` |
+| `VITE_STELLA_API_KEY` | Browser app access key sent in the `X-Stella-API-Key` header. Must match one value in `STELLA_API_KEYS`. | `stella-local-dev-key` |
+| `RATE_LIMIT_MAX_REQUESTS` | Server-wide maximum accepted chat requests per rate-limit window. | `10` |
+| `RATE_LIMIT_WINDOW_MS` | Rate-limit window length in milliseconds. | `60000` |
 | `PORT` | Express server port. | `3028` |
 | `OPENROUTER_MODEL` | OpenRouter model id. | `deepseek/deepseek-v4-pro` |
-| `MINTLIFY_MCP_URL` | Stellar docs MCP endpoint. | `https://stellardevelopmentfoundation.mintlify.app/mcp` |
+| `MINTLIFY_API_KEY` | Required for Mintlify assistant mode if the API is enabled. | empty |
+| `MINTLIFY_DOMAIN` | Mintlify assistant domain. | `stellardevelopmentfoundation` |
+| `STELLAR_DOCS_ROOT` | Local Stellar docs directory searched by Stella v2. | `stellar-docs/docs` |
+| `STELLAR_DOCS_BASE_URL` | Public URL prefix used for local docs citations. | `https://developers.stellar.org/docs` |
+| `DOCS_CONTEXT_MAX_CHARS` | Maximum local docs context added to each Stella v2 turn. | `16000` |
 | `CUSTOM_CONTEXT_PATH` | Path to the editable system/context prompt. | `context/system.md` |
 | `MAX_FILES` | Maximum attachments per message. | `5` |
 | `MAX_FILE_BYTES` | Maximum bytes per uploaded file. | `8388608` |
@@ -93,7 +104,7 @@ npm test
 server/
   index.ts       Express app, routes, streaming response handling
   openrouter.ts  OpenRouter streaming client
-  mintlify.ts    Stellar docs retrieval through MCP
+  docsSearch.ts  Local Stellar docs indexing, ranking, and retrieval
   files.ts       Text and PDF extraction for attachments
   context.ts     Prompt assembly and message sanitization
   config.ts      Environment configuration
@@ -127,6 +138,12 @@ Accepts `multipart/form-data`:
 - `message`: required user message.
 - `messages`: optional JSON-encoded chat history.
 - `files`: optional uploaded attachments.
+
+Requests must include the configured app key:
+
+```http
+X-Stella-API-Key: stella-local-dev-key
+```
 
 The response is streamed as newline-delimited JSON events:
 
@@ -195,5 +212,7 @@ The production Express server serves the built frontend from `dist/client` and e
 
 - Do not commit `.env` or real API keys.
 - Keep OpenRouter access server-side only.
+- Treat `VITE_STELLA_API_KEY` as a lightweight access gate, not a secret; it is included in the browser bundle.
+- `/api/chat` allows 10 accepted requests per minute server-wide by default and returns `429` with `Rate limit exceeded` when the limit is hit.
 - Preserve upload size and type checks when extending attachment support.
 - Treat `context/system.md` as application behavior configuration, not a place for secrets.
